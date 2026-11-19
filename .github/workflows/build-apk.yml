@@ -1,0 +1,73 @@
+name: Build APK Android
+
+# Setiap push ke main: jalankan tes, bangun APK, lalu terbitkan sebagai GitHub Release
+# sehingga APK bisa diunduh langsung dari ponsel (tab Releases di repo).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Instal dependensi
+        run: npm ci
+
+      - name: Typecheck, lint, dan unit test
+        run: |
+          npx tsc --noEmit -p .
+          npx eslint src
+          npx jest
+
+      - name: Generate proyek Android (Expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+        env:
+          CI: 1
+
+      - name: Build APK release
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+        env:
+          NODE_ENV: production
+
+      - name: Ganti nama APK
+        run: |
+          VERSION=$(node -p "require('./app.json').expo.version")
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/pelatih-${VERSION}-build${GITHUB_RUN_NUMBER}.apk"
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pelatih-apk
+          path: out/*.apk
+
+      - name: Terbitkan release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Pelatih build ${{ github.run_number }}
+          prerelease: true
+          files: out/*.apk
+          body: |
+            APK untuk pemakaian pribadi (ditandatangani kunci debug, bukan untuk Play Store).
+            Unduh file .apk di bawah dari ponsel Android, lalu buka untuk memasang.

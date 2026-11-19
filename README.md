@@ -1,56 +1,66 @@
-# Welcome to your Expo app 👋
+# Pelatih
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplikasi coaching pribadi untuk lari, trail run, dan latihan dumbbell di rumah. Data lari diambil dari jam Coros (lewat Strava), jadwal ditulis ke Google Calendar, dan setiap lomba punya pacing strategy yang bisa diekspor sebagai GPX ke jam Coros.
 
-## Get started
+Dibangun dari developer brief "Aplikasi Coaching Running & Home Gym". Peluncuran pertama: Android, Bahasa Indonesia, pemakaian pribadi.
 
-1. Install dependencies
+## Fitur
 
-   ```bash
-   npm install
-   ```
+| Fitur | Isi |
+| --- | --- |
+| Onboarding (F1) | Skrining kesiapan (ringkasan PAR-Q+), level, target, dumbbell (adjustable/tetap), bangku, cedera, pola jadwal |
+| Jadwal mingguan (F12) | Pertanyaan "minggu depan mau latihan berapa kali?" setiap Minggu 19:00, hari sibuk, trail on/off; tanpa jawaban dipakai pola minggu lalu |
+| Mesin coaching (bagian 5) | Siklus 3+1 minggu, kenaikan volume ≤ 10%/minggu, 1 sesi panjang, sesi kualitas jauh dari sesi panjang, trail menggantikan long run, tidak ada kaki berat sehari sebelum/sesudah long run atau trail, taper dan minggu lomba |
+| Adaptasi | Sesi terlewat, rasa buruk 2× berturut-turut, pegal/tidur buruk, sakit, nyeri (latihan kaki diganti tubuh atas), trail di luar rencana |
+| Dumbbell (F5) | 40 gerakan, template full-body A/B, "kekuatan trail" (pola Kilian Jornet: core + kaki satu sisi), tubuh atas; progresi ganda sesuai berat dumbbell yang dimiliki; pencatat set dan timer istirahat |
+| Check-in perasaan (F11) | Sebelum sesi, per gerakan (RPE + nyeri), setelah sesi (RPE, rasa, bagian terberat, nyeri, catatan), pagi berikutnya (pegal) |
+| Strava (data Coros) | Impor lari dan trail, zona HR, sampel gradien/pace untuk kurva tanjakan pribadi, sesi otomatis selesai |
+| Google Calendar (F13) | Tulis/ubah/hapus acara latihan dan lomba, baca waktu sibuk, sesi ikut pindah jika acara digeser |
+| Lomba & pacing (F14) | Import GPX resmi, pos dan cut-off, penilaian target vs kemampuan, pacing per segmen (gradien + kurva pribadi + kelelahan + cuaca), asupan, kartu pace, ekspor GPX berwaypoint ke COROS |
+| Progres | Volume dan elevasi mingguan, distribusi intensitas, kurva tanjakan pribadi, kepatuhan, estimasi 1RM, tren rasa |
 
-2. Start the app
+## Memasang di ponsel
 
-   ```bash
-   npx expo start
-   ```
+1. Push repo ini ke GitHub. Workflow `.github/workflows/build-apk.yml` menjalankan tes lalu membangun APK.
+2. Buka tab **Releases** di repo dari ponsel Android, unduh `pelatih-*.apk`, lalu pasang (izinkan "pasang dari sumber tidak dikenal").
+3. Update berikutnya cukup dipasang di atas versi lama; data tetap tersimpan.
 
-In the output, you'll find options to open the app in a
+Alternatif: `npx eas-cli build -p android --profile preview` (butuh akun Expo gratis).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Menghubungkan Strava
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Buka https://www.strava.com/settings/api dan buat aplikasi.
+2. **Authorization Callback Domain**: `localhost`.
+3. Di aplikasi: Profil › Strava › isi Client ID dan Client Secret › Hubungkan. Kredensial disimpan terenkripsi di ponsel.
+4. Pastikan aplikasi COROS sudah tersambung ke Strava (COROS › Profile › Settings › 3rd Party Apps).
 
-## Get a fresh project
+## Google Calendar
 
-When you're ready, run:
+Buat kalender bernama **Latihan** di Google Calendar (web atau aplikasi), lalu di Pelatih: Profil › Google Calendar › Hubungkan. Kalender "Latihan" dipilih otomatis.
 
-```bash
-npm run reset-project
+## Struktur kode
+
+```
+src/core/       logika murni + unit test (Jest)
+  plan/         generator rencana mingguan dan adaptasi
+  strength/     library gerakan dan progresi dumbbell
+  pacing/       parser/penulis GPX, profil rute, model gradien, pacing, prediksi
+src/data/       penyimpanan SQLite (Android) / localStorage (pratinjau web) dan state aplikasi
+src/services/   Strava, Google Calendar (Calendar Provider), notifikasi, file
+src/app/        layar (Expo Router)
+src/ui/         komponen dan tema
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Pengembangan
 
-### Other setup steps
+```bash
+npm install
+npx jest            # unit test logika coaching dan pacing
+npx tsc --noEmit    # typecheck
+npx eslint src      # lint
+npx expo start      # dev server (butuh development build untuk modul native)
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Catatan keselamatan
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Aturan coaching disusun dari pedoman ACSM dan NSCA, materi pelatih lari (RRCA, UESCA), dan prinsip latihan Kilian Jornet (tanpa praktik ekstremnya). Aplikasi ini bukan pelatih bersertifikat dan bukan nasihat medis. Untuk nyeri tajam atau gejala medis, konsultasikan ke tenaga kesehatan.
