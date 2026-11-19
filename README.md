@@ -17,7 +17,9 @@ Dibangun dari developer brief "Aplikasi Coaching Running & Home Gym". Peluncuran
 | Strava (data Coros) | Impor lari dan trail, zona HR, sampel gradien/pace untuk kurva tanjakan pribadi, sesi otomatis selesai |
 | Google Calendar (F13) | Tulis/ubah/hapus acara latihan dan lomba, baca waktu sibuk, sesi ikut pindah jika acara digeser |
 | Lomba & pacing (F14) | Import GPX resmi, pos dan cut-off, penilaian target vs kemampuan, pacing per segmen (gradien + kurva pribadi + kelelahan + cuaca), asupan, kartu pace, ekspor GPX berwaypoint ke COROS |
-| Progres | Volume dan elevasi mingguan, distribusi intensitas, kurva tanjakan pribadi, kepatuhan, estimasi 1RM, tren rasa |
+| Hari ini | Cincin progres menit latihan, latihan hari ini, lomba berikutnya, beban latihan mingguan (TRIMP/sRPE) dan status latihan (rasio akut:kronis) |
+| Aktivitas & statistik | Daftar per bulan dari jam dan sesi dumbbell, detail aktivitas, rekor pribadi, volume, beban, distribusi intensitas, kurva tanjakan pribadi, estimasi 1RM |
+| Tampilan | Gaya gelap ala aplikasi jam olahraga; mode Sistem/Gelap/Terang di Profil › Tampilan |
 
 ## Memasang di ponsel
 

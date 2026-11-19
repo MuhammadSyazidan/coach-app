@@ -8,10 +8,13 @@ import type { Activity, Checkin, PlannedSession, Profile, Race, SetLog, WeekPlan
 import * as calendar from '@/services/calendar';
 import * as notify from '@/services/notify';
 import * as strava from '@/services/strava';
+import type { ThemeMode } from '@/ui/theme';
 
 import * as db from './db';
 
 export interface Settings {
+  themeMode?: ThemeMode;
+  watchName?: string;
   calendarId?: string;
   calendarTitle?: string;
   calendarEnabled: boolean;

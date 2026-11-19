@@ -2,17 +2,19 @@ import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 
-import { addDays, formatShort, today, weekStartOf } from '@/core/dates';
+import { addDays, formatDuration, formatPace, formatShort, today, weekStartOf } from '@/core/dates';
+import { dailyLoads } from '@/core/load';
+import { useLoadEntries } from '@/data/derived';
 import { fitPersonalCurve } from '@/core/pacing/model';
 import { EXERCISE_BY_ID } from '@/core/strength/exercises';
 import { estimate1RM } from '@/core/strength/progression';
 import { intensityMix, mixAdvice } from '@/core/zones';
 import { useStore } from '@/data/store';
 import { BarChart, ZoneBar } from '@/ui/charts';
-import { Card, Empty, Row, Screen, Section, T } from '@/ui/kit';
+import { Card, Empty, Num, Row, Screen, Section, T } from '@/ui/kit';
 import { useTheme } from '@/ui/theme';
 
-export default function Progress() {
+export default function Statistics() {
   const { activities, setLogs, weeks, checkins } = useStore();
   const t = useTheme();
   const thisWeek = weekStartOf(today());
@@ -48,10 +50,50 @@ export default function Progress() {
       .slice(0, 6);
   }, [setLogs]);
 
+  const records = useMemo(() => {
+    const runs = activities.filter((a) => a.type !== 'other' && a.distanceKm > 0);
+    const out: { label: string; value: string }[] = [];
+    if (!runs.length) return out;
+    const longest = runs.reduce((a, b) => (b.distanceKm > a.distanceKm ? b : a));
+    out.push({ label: 'Lari terjauh (km)', value: longest.distanceKm.toFixed(2) });
+    const fivePlus = runs.filter((a) => a.distanceKm >= 5);
+    if (fivePlus.length) {
+      const fastest = fivePlus.reduce((a, b) => (b.movingSec / b.distanceKm < a.movingSec / a.distanceKm ? b : a));
+      out.push({ label: 'Pace terbaik ≥ 5 km (/km)', value: formatPace(fastest.movingSec / fastest.distanceKm) });
+    }
+    const climb = runs.reduce((a, b) => (b.elevGainM > a.elevGainM ? b : a));
+    if (climb.elevGainM > 0) out.push({ label: 'Elevasi terbanyak (m)', value: String(climb.elevGainM) });
+    const longestTime = runs.reduce((a, b) => (b.movingSec > a.movingSec ? b : a));
+    out.push({ label: 'Durasi terlama', value: formatDuration(longestTime.movingSec) });
+    return out;
+  }, [activities]);
+  const entries = useLoadEntries();
+  const loadWeeks = starts.map((w) => dailyLoads(entries, w, 7).reduce((a, b) => a + b, 0));
+
   const feel = checkins.filter((c) => c.moment === 'setelah' && c.feeling).slice(-10);
 
   return (
-    <Screen title="Progres" subtitle="8 minggu terakhir">
+    <Screen inset={false}>
+      <T color="muted">8 minggu terakhir</T>
+      {records.length ? (
+        <Section title="Rekor pribadi">
+          <Card style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {records.map((r) => (
+              <View key={r.label} style={{ width: '50%', paddingVertical: 8 }}>
+                <Num size={28}>{r.value}</Num>
+                <T size="small" color="muted">{r.label}</T>
+              </View>
+            ))}
+          </Card>
+        </Section>
+      ) : null}
+      {loadWeeks.some((v) => v > 0) ? (
+        <Section title="Beban latihan mingguan">
+          <Card>
+            <BarChart values={loadWeeks} labels={starts.map((s) => formatShort(s).split(' ')[0])} unit="TRIMP / sRPE per minggu" />
+          </Card>
+        </Section>
+      ) : null}
       {activities.length === 0 && setLogs.length === 0 ? (
         <Empty title="Belum ada data" body="Hubungkan Strava di Profil agar lari dari jam Coros masuk, atau catat sesi kekuatan pertamamu." />
       ) : null}

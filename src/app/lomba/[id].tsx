@@ -181,7 +181,7 @@ export default function RaceScreen() {
               <T size="small">1. Ketuk “Ekspor GPX ke COROS”, pilih aplikasi COROS, lalu Save.</T>
               <T size="small">2. Di aplikasi COROS: Explore › rute › Sync with your device.</T>
               <T size="small">3. Di jam: mode Trail Run/Run › Navigate › pilih rute. Halaman waypoint menampilkan jarak dan elevasi ke waypoint berikutnya. Nama waypoint berisi target: “KM12 1:18 6:40” = tiba di km 12 pada 1:18, lalu pace 6:40/km.</T>
-              <T size="small" style={{ marginTop: 6 }}>Jika jammu sudah punya Pace Strategy (aplikasi COROS › Training › Pace Strategy), pilih rute yang sama, isi target {formatDuration(race.targetSec)}, lalu sesuaikan waktu segmen dan pos dengan tabel di atas.</T>
+              <T size="small" style={{ marginTop: 6 }}>Pace 3 kamu mendukung Pace Strategy: di aplikasi COROS buka Profile › Pace Strategy, pilih rute yang sama, isi target {formatDuration(race.targetSec)}, lalu sesuaikan waktu segmen dan pos dengan tabel di atas. Jam akan menampilkan selisih terhadap rencana secara langsung.</T>
             </Card>
           </Section>
 

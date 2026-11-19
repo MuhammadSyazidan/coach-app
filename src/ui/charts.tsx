@@ -85,3 +85,50 @@ export function ElevationChart({ km, ele, cuts, height = 120 }: { km: number[]; 
     </Svg>
   );
 }
+
+/** Cincin progres 270° (gaya gauge halaman Today). progress 0..1 */
+export function Ring({ progress, size = 220, stroke = 12, children }: { progress: number; size?: number; stroke?: number; children?: React.ReactNode }) {
+  const t = useTheme();
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  const start = 135; // derajat, mulai kiri bawah
+  const sweep = 270;
+  const p = Math.max(0, Math.min(1, progress));
+  const pt = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    return [c + r * Math.cos(rad), c + r * Math.sin(rad)];
+  };
+  const arc = (from: number, to: number) => {
+    const [x1, y1] = pt(from);
+    const [x2, y2] = pt(to);
+    const large = to - from > 180 ? 1 : 0;
+    return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  };
+  return (
+    <View style={{ width: size, height: size * 0.86, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute', top: 0 }}>
+        <Path d={arc(start, start + sweep)} stroke={t.cardAlt} strokeWidth={stroke} strokeLinecap="round" fill="none" />
+        {p > 0.005 ? <Path d={arc(start, start + sweep * p)} stroke={t.highlight} strokeWidth={stroke} strokeLinecap="round" fill="none" /> : null}
+      </Svg>
+      <View style={{ alignItems: 'center', marginTop: -size * 0.08 }}>{children}</View>
+    </View>
+  );
+}
+
+/** Batang tipis per hari dengan label huruf di bawah (beban harian). */
+export function MiniBars({ values, labels, highlight, height = 72, color }: { values: number[]; labels: string[]; highlight?: number; height?: number; color?: string }) {
+  const t = useTheme();
+  const max = Math.max(1, ...values);
+  return (
+    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'flex-end' }}>
+      {values.map((v, i) => (
+        <View key={i} style={{ alignItems: 'center', gap: 6, width: 20 }}>
+          <View style={{ width: 8, height, borderRadius: 4, backgroundColor: t.cardAlt, justifyContent: 'flex-end', overflow: 'hidden' }}>
+            {v > 0 ? <View style={{ height: Math.max(4, (v / max) * height), backgroundColor: color ?? t.highlight, borderRadius: 4 }} /> : null}
+          </View>
+          <T size="tiny" color={i === highlight ? 'ink' : 'muted'} weight={i === highlight ? '700' : '400'}>{labels[i]}</T>
+        </View>
+      ))}
+    </View>
+  );
+}

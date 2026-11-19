@@ -19,7 +19,7 @@ export default function Week() {
 
   return (
     <Screen
-      title="Rencana minggu"
+      title="Rencana"
       subtitle={`${formatShort(start)} – ${formatShort(addDays(start, 6))}`}
       right={
         <Row>

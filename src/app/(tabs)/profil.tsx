@@ -2,161 +2,107 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
 
-import { weekStartOf, today } from '@/core/dates';
-import { availableWeights } from '@/core/strength/progression';
 import { exportAll } from '@/data/db';
 import { useStore } from '@/data/store';
-import * as calendar from '@/services/calendar';
 import { shareText } from '@/services/files';
-import * as notify from '@/services/notify';
-import * as strava from '@/services/strava';
-import { Badge, Button, Card, Chip, ChipRow, Divider, Field, Row, Screen, Section, T } from '@/ui/kit';
+import { isConnected } from '@/services/strava';
+import {
+  IconBell, IconBook, IconCalendar, IconChart, IconDownload, IconEdit, IconFlag, IconLink, IconMoon, IconTrash, IconWatch,
+} from '@/ui/icons';
+import { Button, Card, MenuGroup, MenuRow, Num, Row, Screen, T } from '@/ui/kit';
+import { useTheme } from '@/ui/theme';
 
 const LEVEL = { pemula: 'Pemula', menengah: 'Menengah', lanjut: 'Lanjut' } as const;
+const MODE = { sistem: 'Sistem', gelap: 'Gelap', terang: 'Terang' } as const;
 
 export default function ProfileTab() {
   const store = useStore();
+  const t = useTheme();
   const { profile, settings } = store;
-  const [stravaOn, setStravaOn] = useState(false);
-  const [clientId, setClientId] = useState('');
-  const [secret, setSecret] = useState('');
-  const [busy, setBusy] = useState<string | null>(null);
-  const [cals, setCals] = useState<calendar.CalendarChoice[]>([]);
-  const native = Platform.OS !== 'web';
+  const [connected, setConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    if (!native) return;
-    strava.isConnected().then(setStravaOn).catch(() => {});
-    strava.getCredentials().then((c) => c && setClientId(c.id)).catch(() => {});
-  }, [native]);
+    if (Platform.OS !== 'web') isConnected().then(setConnected).catch(() => {});
+  }, [settings.lastStravaSync]);
 
   if (!profile) return null;
-  const w = availableWeights(profile.dumbbell);
+  const initial = profile.name.trim().charAt(0).toUpperCase() || 'P';
 
-  const run = async (label: string, fn: () => Promise<void>) => {
-    setBusy(label);
+  const sync = async () => {
+    if (!connected) return router.push('/pengaturan/strava');
+    setSyncing(true);
     try {
-      await fn();
+      const r = await store.syncStrava();
+      Alert.alert('Sinkron selesai', `${r.added} aktivitas baru.`);
     } catch (e) {
       Alert.alert('Gagal', (e as Error).message);
     } finally {
-      setBusy(null);
+      setSyncing(false);
     }
   };
 
-  const connectStrava = () =>
-    run('strava', async () => {
-      if (clientId && secret) await strava.saveCredentials(clientId, secret);
-      const name = await strava.connect();
-      setStravaOn(true);
-      setSecret('');
-      store.saveSettings({ stravaAthlete: name });
-      const r = await store.syncStrava();
-      Alert.alert('Strava terhubung', `Halo ${name}. ${r.added} aktivitas lari 8 minggu terakhir diimpor.`);
-    });
-
-  const enableCalendar = () =>
-    run('cal', async () => {
-      if (!(await calendar.ensurePermission())) throw new Error('Izin kalender ditolak.');
-      const list = await calendar.writableCalendars();
-      setCals(list);
-      const pick = await calendar.suggestCalendar();
-      if (pick) store.saveSettings({ calendarEnabled: true, calendarId: pick.id, calendarTitle: `${pick.title} (${pick.account})` });
-    });
-
-  const enableNotif = () =>
-    run('notif', async () => {
-      if (!(await notify.setupNotifications())) throw new Error('Izin notifikasi ditolak.');
-      store.saveSettings({ notificationsEnabled: true });
-      await notify.rescheduleAll(store.weeks[weekStartOf(today())] ?? null, profile.trainingTime);
-    });
-
   return (
-    <Screen title={profile.name} subtitle={`${LEVEL[profile.level]} · ${profile.goalNote || profile.goal}`}>
-      <Card>
-        <T size="small" color="muted">{`${profile.defaultRunSessions}× lari + ${profile.defaultStrengthSessions}× kekuatan per minggu · ${profile.trainingTime}`}</T>
-        <T size="small" color="muted">{`Dumbbell ${profile.dumbbell.adjustable ? 'adjustable' : 'tetap'}: ${w[0]}–${w[w.length - 1]} kg · bangku ${profile.hasBench ? 'ada' : 'tidak ada'}`}</T>
-        <T size="small" color="muted">{`HR maks ${profile.maxHr ?? '-'} · trail ${profile.trailEveryWeeks ? `tiap ${profile.trailEveryWeeks} minggu` : 'tidak rutin'}`}</T>
-        <Button small kind="secondary" title="Ubah profil" onPress={() => router.push('/onboarding?edit=1')} style={{ marginTop: 10, alignSelf: 'flex-start' }} />
+    <Screen>
+      <Row style={{ marginTop: 8, marginBottom: 20, gap: 16 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Num size={34} style={{ color: '#fff' }}>{initial}</Num>
+        </View>
+        <View style={{ flex: 1 }}>
+          <T size="title">{profile.name}</T>
+          <T size="small" color="muted">{`${LEVEL[profile.level]} · ${profile.goalNote || 'target ' + profile.goal}`}</T>
+        </View>
+      </Row>
+
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }} onPress={() => router.push('/pengaturan/jam')}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <T size="h" weight="500">{settings.watchName ?? 'COROS PACE 3'}</T>
+          <Row style={{ gap: 6 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: connected ? t.good : t.muted }} />
+            <T size="small" color="muted">{connected ? 'Tersambung lewat Strava' : 'Belum tersambung'}</T>
+          </Row>
+          <T size="small" color="muted">
+            {settings.lastStravaSync ? `Sinkron ${new Date(settings.lastStravaSync * 1000).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}` : 'Belum pernah sinkron'}
+          </T>
+          {Platform.OS !== 'web' ? <Button small kind="secondary" title={connected ? 'Sinkron sekarang' : 'Hubungkan'} loading={syncing} onPress={sync} style={{ alignSelf: 'flex-start', marginTop: 4 }} /> : null}
+        </View>
+        <IconWatch color={t.muted} size={72} />
       </Card>
 
-      {native ? (
-        <>
-          <Section title="Strava (data jam Coros)" action={stravaOn ? <Badge label="Terhubung" tone="good" /> : <Badge label="Belum" />}>
-            <Card>
-              {stravaOn ? (
-                <View style={{ gap: 8 }}>
-                  <T size="small">{`Terhubung${settings.stravaAthlete ? ` sebagai ${settings.stravaAthlete}` : ''}. Lari dari Coros masuk otomatis saat aplikasi dibuka.`}</T>
-                  <Button small kind="secondary" title="Sinkron sekarang" loading={busy === 'sync'} onPress={() => run('sync', async () => { const r = await store.syncStrava(); Alert.alert('Selesai', `${r.added} aktivitas baru.`); })} />
-                  <Button small kind="danger" title="Putuskan Strava" onPress={() => run('dis', async () => { await strava.disconnect(); setStravaOn(false); })} />
-                </View>
-              ) : (
-                <View>
-                  <T size="small" style={{ marginBottom: 10 }}>
-                    {'1. Buka strava.com/settings/api dan buat aplikasi.\n2. Authorization Callback Domain: localhost\n3. Salin Client ID dan Client Secret ke sini.'}
-                  </T>
-                  <Field label="Client ID" value={clientId} onChangeText={setClientId} keyboardType="number-pad" autoCapitalize="none" />
-                  <Field label="Client Secret" value={secret} onChangeText={setSecret} autoCapitalize="none" secureTextEntry hint="Disimpan terenkripsi di ponsel ini saja." />
-                  <Button title="Hubungkan Strava" loading={busy === 'strava'} onPress={connectStrava} disabled={!clientId} />
-                </View>
-              )}
-            </Card>
-          </Section>
+      <MenuGroup>
+        <MenuRow icon={<IconEdit color={t.good} />} label="Profil & pola latihan" onPress={() => router.push('/onboarding?edit=1')} />
+        <MenuRow icon={<IconChart color={t.highlight} />} label="Statistik & rekor" onPress={() => router.push('/statistik')} />
+        <MenuRow icon={<IconBook color={t.strength} />} label="Library gerakan" onPress={() => router.push('/gerakan')} />
+        <MenuRow icon={<IconFlag color={t.accent} />} label="Lomba & pace strategy" onPress={() => router.push('/lomba')} />
+      </MenuGroup>
 
-          <Section title="Google Calendar" action={settings.calendarEnabled ? <Badge label="Aktif" tone="good" /> : <Badge label="Mati" />}>
-            <Card>
-              <T size="small" style={{ marginBottom: 10 }}>
-                Jadwal latihan dan lomba ditulis ke kalender akun Google di ponsel ini. Saran: buat kalender bernama “Latihan” di Google Calendar agar terpisah; aplikasi memilihnya otomatis.
-              </T>
-              {settings.calendarEnabled ? <T size="small" weight="600">{`Kalender: ${settings.calendarTitle ?? '-'}`}</T> : null}
-              {cals.length ? (
-                <ChipRow>
-                  {cals.map((c) => (
-                    <Chip key={c.id} label={`${c.title}`} selected={settings.calendarId === c.id} onPress={() => store.saveSettings({ calendarId: c.id, calendarTitle: `${c.title} (${c.account})` })} />
-                  ))}
-                </ChipRow>
-              ) : null}
-              <Row style={{ marginTop: 10 }}>
-                <Button small title={settings.calendarEnabled ? 'Pilih kalender lain' : 'Hubungkan kalender'} loading={busy === 'cal'} onPress={enableCalendar} />
-                {settings.calendarEnabled ? <Button small kind="secondary" title="Matikan" onPress={() => store.saveSettings({ calendarEnabled: false })} /> : null}
-              </Row>
-            </Card>
-          </Section>
+      <MenuGroup>
+        <MenuRow icon={<IconLink color={t.accent} />} label="Strava" value={connected ? 'Terhubung' : undefined} onPress={() => router.push('/pengaturan/strava')} />
+        <MenuRow icon={<IconCalendar color={t.info} />} label="Google Calendar" value={settings.calendarEnabled ? 'Aktif' : undefined} onPress={() => router.push('/pengaturan/kalender')} />
+        <MenuRow icon={<IconBell color={t.warn} />} label="Notifikasi" value={settings.notificationsEnabled ? 'Aktif' : undefined} onPress={() => router.push('/pengaturan/notifikasi')} />
+        <MenuRow icon={<IconMoon color={t.muted} />} label="Tampilan" value={MODE[settings.themeMode ?? 'sistem']} onPress={() => router.push('/pengaturan/tampilan')} />
+      </MenuGroup>
 
-          <Section title="Notifikasi" action={settings.notificationsEnabled ? <Badge label="Aktif" tone="good" /> : <Badge label="Mati" />}>
-            <Card>
-              <T size="small" style={{ marginBottom: 10 }}>Pengingat sesi, pertanyaan jadwal setiap Minggu 19:00, dan check-in pegal pagi setelah sesi kunci.</T>
-              <Button small title={settings.notificationsEnabled ? 'Jadwalkan ulang' : 'Aktifkan notifikasi'} loading={busy === 'notif'} onPress={enableNotif} />
-            </Card>
-          </Section>
-        </>
-      ) : (
-        <Card tone="warn">
-          <T size="small">Strava, kalender, notifikasi, dan file GPX hanya tersedia di aplikasi Android.</T>
-        </Card>
-      )}
+      <MenuGroup>
+        <MenuRow
+          icon={<IconDownload color={t.info} />}
+          label="Ekspor data (cadangan)"
+          onPress={() => shareText('pelatih-data.json', exportAll(), 'application/json', 'Simpan cadangan data').catch((e) => Alert.alert('Gagal', (e as Error).message))}
+        />
+        <MenuRow
+          icon={<IconTrash color={t.bad} />}
+          label="Hapus semua data"
+          onPress={() =>
+            Alert.alert('Hapus semua data?', 'Profil, rencana, check-in, dan lomba dihapus dari ponsel ini.', [
+              { text: 'Batal', style: 'cancel' },
+              { text: 'Hapus', style: 'destructive', onPress: () => { store.resetAll(); router.replace('/onboarding'); } },
+            ])
+          }
+        />
+      </MenuGroup>
 
-      <Section title="Data">
-        <Card>
-          <Button small kind="secondary" title="Ekspor semua data (JSON)" onPress={() => run('exp', () => shareText('pelatih-data.json', exportAll(), 'application/json', 'Simpan cadangan data'))} style={{ alignSelf: 'flex-start' }} />
-          <Divider />
-          <Button
-            small
-            kind="danger"
-            title="Hapus semua data"
-            onPress={() =>
-              Alert.alert('Hapus semua data?', 'Profil, rencana, check-in, dan lomba akan dihapus dari ponsel ini.', [
-                { text: 'Batal', style: 'cancel' },
-                { text: 'Hapus', style: 'destructive', onPress: () => { store.resetAll(); router.replace('/onboarding'); } },
-              ])
-            }
-            style={{ alignSelf: 'flex-start' }}
-          />
-        </Card>
-      </Section>
-
-      <T size="tiny" color="muted" style={{ marginTop: 16 }}>
-        Pelatih versi 0.1 · Aturan coaching disusun dari pedoman ACSM, NSCA, materi pelatih lari (RRCA, UESCA) dan prinsip latihan Kilian Jornet. Bukan nasihat medis. Untuk nyeri atau gejala medis, konsultasikan ke tenaga kesehatan.
+      <T size="tiny" color="muted" style={{ marginTop: 12 }}>
+        Pelatih 0.2 · Aturan coaching disusun dari pedoman ACSM, NSCA, materi pelatih lari (RRCA, UESCA) dan prinsip latihan Kilian Jornet. Bukan nasihat medis.
       </T>
     </Screen>
   );

@@ -1,12 +1,13 @@
+import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
 import * as Notifications from 'expo-notifications';
-import { router, Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { StoreProvider } from '@/data/store';
-import { useTheme } from '@/ui/theme';
+import { StoreProvider, useStore } from '@/data/store';
+import { ThemeModeContext, useIsDark, useTheme } from '@/ui/theme';
 
 function useNotificationLinks() {
   useEffect(() => {
@@ -22,32 +23,56 @@ function useNotificationLinks() {
   }, []);
 }
 
-export default function RootLayout() {
+function Nav() {
   const t = useTheme();
-  const scheme = useColorScheme();
+  const dark = useIsDark();
+  const nav = dark ? DarkTheme : DefaultTheme;
+  return (
+    <ThemeProvider value={{ ...nav, colors: { ...nav.colors, background: t.bg, card: t.bg, text: t.ink, border: t.line, primary: t.accent } }}>
+      <StatusBar style={t.statusBar} />
+      <Stack
+        screenOptions={{
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: t.bg },
+          headerTintColor: t.ink,
+          headerTitleStyle: { fontWeight: '700' },
+          contentStyle: { backgroundColor: t.bg },
+          headerBackButtonDisplayMode: 'minimal',
+        }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="minggu-depan" options={{ title: 'Rencana minggu' }} />
+        <Stack.Screen name="sesi/[id]" options={{ title: 'Sesi' }} />
+        <Stack.Screen name="checkin" options={{ title: 'Check-in', presentation: 'modal' }} />
+        <Stack.Screen name="lomba/[id]" options={{ title: 'Lomba' }} />
+        <Stack.Screen name="lomba/edit" options={{ title: 'Data lomba' }} />
+        <Stack.Screen name="gerakan/index" options={{ title: 'Library gerakan' }} />
+        <Stack.Screen name="gerakan/[id]" options={{ title: 'Gerakan' }} />
+        <Stack.Screen name="aktivitas/[id]" options={{ title: 'Aktivitas' }} />
+        <Stack.Screen name="statistik" options={{ title: 'Statistik' }} />
+        <Stack.Screen name="pengaturan/[bagian]" options={{ title: 'Pengaturan' }} />
+      </Stack>
+    </ThemeProvider>
+  );
+}
+
+function ThemedApp() {
+  const { settings } = useStore();
   useNotificationLinks();
+  return (
+    <ThemeModeContext.Provider value={settings.themeMode ?? 'sistem'}>
+      <Nav />
+    </ThemeModeContext.Provider>
+  );
+}
+
+export default function RootLayout() {
+  // Font angka dimuat di latar; teks memakai font sistem sampai siap.
+  useFonts({ BarlowCondensed_600SemiBold, BarlowCondensed_700Bold });
   return (
     <SafeAreaProvider>
       <StoreProvider>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack
-          screenOptions={{
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: t.bg },
-            headerTintColor: t.ink,
-            headerTitleStyle: { fontWeight: '700' },
-            contentStyle: { backgroundColor: t.bg },
-            headerBackButtonDisplayMode: 'minimal',
-          }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen name="minggu-depan" options={{ title: 'Rencana minggu' }} />
-          <Stack.Screen name="sesi/[id]" options={{ title: 'Sesi' }} />
-          <Stack.Screen name="checkin" options={{ title: 'Check-in', presentation: 'modal' }} />
-          <Stack.Screen name="lomba/[id]" options={{ title: 'Lomba' }} />
-          <Stack.Screen name="lomba/edit" options={{ title: 'Data lomba' }} />
-          <Stack.Screen name="gerakan/[id]" options={{ title: 'Gerakan' }} />
-        </Stack>
+        <ThemedApp />
       </StoreProvider>
     </SafeAreaProvider>
   );
